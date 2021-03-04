@@ -28,7 +28,7 @@ import { PruneStack } from './prunestack';
 export class SlpTokenGraph {
 
     _tokenIdHex: string;
-    _tokenIdBuf: Buffer; // NOTE: will need to consider future interaction with lazy loading/garbage collection 
+    _tokenIdBuf: Buffer; // NOTE: will need to consider future interaction with lazy loading/garbage collection
     _lastUpdatedBlock!: number;
     _tokenDetails: SlpTransactionDetails;
     _blockCreated: number|null;
@@ -126,8 +126,8 @@ export class SlpTokenGraph {
         for (let txid of txids) {
             let gt = this._graphTxns.get(txid);
             if (gt) {
-                let canBePruned = gt.outputs.filter(o => [ 
-                                        BatonUtxoStatus.BATON_UNSPENT, 
+                let canBePruned = gt.outputs.filter(o => [
+                                        BatonUtxoStatus.BATON_UNSPENT,
                                         TokenUtxoStatus.UNSPENT
                                     ].includes(o.status)).length === 0;
                 if (canBePruned) {
@@ -251,14 +251,14 @@ export class SlpTokenGraph {
             const txnHex = await RpcClient.getRawTransaction(spendTxnInfo.txid!);
             const txn = Primatives.Transaction.parseFromBuffer(Buffer.from(txnHex, "hex"));
 
-            // SPENT_INVALID_SLP (bad OP_RETURN)          
+            // SPENT_INVALID_SLP (bad OP_RETURN)
             try {
                 slp.parseSlpOutputScript(Buffer.from(txn.outputs[0]!.scriptPubKey));
             } catch (_) {
                 return  { status: BatonUtxoStatus.BATON_SPENT_INVALID_SLP, txid: spendTxnInfo.txid!, invalidReason: "SLP baton output was spent in an invalid SLP transaction (bad SLP metadata)." }
             }
 
-            // SPENT_INVALID_SLP (bad DAG)          
+            // SPENT_INVALID_SLP (bad DAG)
             if (! validation.validity) {
                 return  { status: BatonUtxoStatus.BATON_SPENT_INVALID_SLP, txid: spendTxnInfo.txid!, invalidReason: "SLP baton output was spent in an invalid SLP transaction (bad DAG)." }
             }
@@ -416,8 +416,8 @@ export class SlpTokenGraph {
                                 o.invalidReason = spendInfo.invalidReason;
                             }
                         }
-                        if (processUpToBlock && gtos.filter(o => [ TokenUtxoStatus.UNSPENT, 
-                                                                    BatonUtxoStatus.BATON_UNSPENT ].includes(o.status)).length === 0) 
+                        if (processUpToBlock && gtos.filter(o => [ TokenUtxoStatus.UNSPENT,
+                                                                    BatonUtxoStatus.BATON_UNSPENT ].includes(o.status)).length === 0)
                         {
                             let pruningStack = PruneStack();
                             pruningStack.addGraphTxidToPruningStack(processUpToBlock, this._tokenIdHex, previd);
@@ -460,7 +460,7 @@ export class SlpTokenGraph {
                 graphTxn.outputs.push({
                     address: address,
                     vout: 1,
-                    bchSatoshis: txn.outputs.length > 1 ? txn.outputs[1].satoshis : address ? 0 : null, 
+                    bchSatoshis: txn.outputs.length > 1 ? txn.outputs[1].satoshis : address ? 0 : null,
                     slpAmount: graphTxn.details.genesisOrMintQuantity! as BigNumber,
                     spendTxid: null,
                     status: address ? TokenUtxoStatus.UNSPENT : TokenUtxoStatus.MISSING_BCH_VOUT,
@@ -474,7 +474,7 @@ export class SlpTokenGraph {
                     graphTxn.outputs.push({
                         address: address,
                         vout: txnSlpDetails.batonVout,
-                        bchSatoshis: txnSlpDetails.batonVout < txn.outputs.length ? txn.outputs[txnSlpDetails.batonVout].satoshis : address ? 0 : null, 
+                        bchSatoshis: txnSlpDetails.batonVout < txn.outputs.length ? txn.outputs[txnSlpDetails.batonVout].satoshis : address ? 0 : null,
                         slpAmount: new BigNumber(0),
                         spendTxid: null,
                         status: address ? BatonUtxoStatus.BATON_UNSPENT : BatonUtxoStatus.BATON_MISSING_BCH_VOUT,
@@ -496,7 +496,7 @@ export class SlpTokenGraph {
                         graphTxn.outputs.push({
                             address: address,
                             vout: slp_vout,
-                            bchSatoshis: slp_vout < txn.outputs.length ? txn.outputs[slp_vout].satoshis : address ? 0 : null, 
+                            bchSatoshis: slp_vout < txn.outputs.length ? txn.outputs[slp_vout].satoshis : address ? 0 : null,
                             slpAmount: graphTxn.details.sendOutputs![slp_vout],
                             spendTxid: null,
                             status: address ? TokenUtxoStatus.UNSPENT : TokenUtxoStatus.MISSING_BCH_VOUT,
@@ -547,15 +547,15 @@ export class SlpTokenGraph {
             return;
         }
 
-        // update status of inputs to UNSPENT or BATON_UNSPENT 
+        // update status of inputs to UNSPENT or BATON_UNSPENT
         let gt = this._graphTxns.get(txid)!;
         for (let input of gt.inputs) {
             let gti = this._graphTxns.get(input.txid);
             if (gti) {
                 let outs = gti.outputs.filter(o => o.spendTxid === txid);
                 outs.forEach(o => {
-                    if ([SlpTransactionType.GENESIS, SlpTransactionType.MINT].includes(gti!.details.transactionType) && 
-                        o.vout === gti!.details.batonVout) 
+                    if ([SlpTransactionType.GENESIS, SlpTransactionType.MINT].includes(gti!.details.transactionType) &&
+                        o.vout === gti!.details.batonVout)
                     {
                         o.spendTxid = null;
                         o.status = BatonUtxoStatus.BATON_UNSPENT;
@@ -578,7 +578,7 @@ export class SlpTokenGraph {
         try {
             if (this._network === 'regtest'){
               address = Utils.toSlpRegtestAddress(bitbox.Address.fromOutputScript(txn.outputs[outputIndex]._scriptBuffer, 'bchreg'));
-            } else{
+            } else {
               address = Utils.toSlpAddress(bitbox.Address.fromOutputScript(txn.outputs[outputIndex]._scriptBuffer, this._network));
             }
         }
@@ -631,7 +631,7 @@ export class SlpTokenGraph {
         let genesisMintQty = new BigNumber(0);
         if(details.genesisOrMintQuantity)
             genesisMintQty = new BigNumber(details.genesisOrMintQuantity.toString()).multipliedBy(10**decimals);
-        
+
         let sendOutputs: BigNumber[] = [];
         if(details.sendOutputs)
             sendOutputs = details.sendOutputs.map(o => o = <any>new BigNumber(o.toString()).multipliedBy(10**decimals));
@@ -654,10 +654,63 @@ export class SlpTokenGraph {
 
         return res;
     }
+
+    static async initFromDbos(token: TokenDBObject, dag: GraphTxnDbo[], manager: SlpGraphManager, network: string): Promise<SlpTokenGraph> {
+        let tokenDetails = this.MapDbTokenDetailsFromDbo(token.tokenDetails, token.tokenDetails.decimals);
+        // if (!token.tokenStats.block_created && token.tokenStats.block_created !== 0) {
+        //     throw Error("Must have a block created for token");
+        // }
+        let tg = await manager.getTokenGraph({
+            txid: token.tokenDetails.tokenIdHex,
+            tokenIdHex: token.tokenDetails.tokenIdHex,
+            slpMsgDetailsGenesis: tokenDetails,
+            forceValid: true,
+            blockCreated: token.tokenStats.block_created!,
+            nft1ChildParentIdHex: token.nftParentId
+        });
+        if (!tg) {
+            throw Error("This should never happen");
+        }
+        tg._loadInitiated = true;
+
+        // add minting baton
+        tg._mintBatonUtxo = token.mintBatonUtxo;
+        tg._mintBatonStatus = token.mintBatonStatus;
+
+        // add nft parent id
+        if (token.nftParentId) {
+            tg._nftParentId = token.nftParentId;
+        }
+
+        tg._network = network;
+
+        // Map _txnGraph
+        tg!._graphTxns.fromDbos(
+            dag,
+            token._pruningState
+        );
+
+        // Preload SlpValidator with cachedValidations
+        tg._graphTxns.forEach((_, txid) => {
+            let validation: any = { validity: null, details: null, invalidReason: null, parents: [], waiting: false }
+            validation.validity = tg!._graphTxns.get(txid) ? true : false;
+            validation.details = tg!._graphTxns.get(txid)!.details;
+            if(!validation.details)
+                throw Error("No saved details about transaction" + txid);
+            tg!._slpValidator.cachedValidations[txid] = validation;
+        });
+
+        console.log(`[INFO] Loaded ${tg._graphTxns.size} validation cache results`);
+
+        // Map _lastUpdatedBlock
+        tg._lastUpdatedBlock = token.lastUpdatedBlock;
+
+        return tg;
+    }
 }
 
 // export interface AddressBalance {
-//     token_balance: BigNumber; 
+//     token_balance: BigNumber;
 //     satoshis_balance: number;
 // }
 
