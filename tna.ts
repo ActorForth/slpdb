@@ -1,6 +1,6 @@
 require('dotenv').config()
 import { SlpTransactionDetailsTnaDbo } from './slpgraphmanager';
-import { Utils } from 'slpjs';
+import { Utils } from 'slpjs-regtest';
 import { BITBOX } from 'bitbox-sdk';
 import * as Bitcore from 'bitcore-lib-cash';
 
@@ -9,7 +9,21 @@ let bitcore = require('bitcore-lib-cash');
 
 export class TNA {
     fromTx(gene: Bitcore.Transaction, options?: any): TNATxn {
-        let net = options.network === 'testnet' ? bitcore.Networks.testnet : bitcore.Networks.livenet;
+        let net : string
+        switch (options.network) {
+          case 'mainnet':
+            net = bitcore.Networks.livenet
+            break
+          case 'testnet':
+            net = bitcore.Networks.testnet
+            break
+          case 'regtest':
+            net = bitcore.Networks.regtest
+            break
+          default:
+            net = bitcore.Networks.livenet
+        }
+
         let t = gene.toObject()
         let inputs: Xput[] = [];
         let outputs: Xput[] = [];
@@ -41,20 +55,36 @@ export class TNA {
                         i: input.outputIndex,
                         s: input._scriptBuffer,
                     }
+                    let address;
+                    try { address = Utils.toSlpAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      if (options.network === 'regtest'){
+                        address = Utils.toSlpRegtestAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      } else{
+                        address = Utils.toSlpAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      }
+                    } catch(_) { }
+                    if(!address)
+                        try {
+                            // here we try to catch any transactions which bitcore lib could not decode (eg. 0af38c6700000e44e6f878e7b53dd453df477672f6a8268d6d8bb28c0116fbe5:1)
+                            const scriptSigHexArray = input.script.toASM().split(' ')
+                            const redeemScriptHex = scriptSigHexArray[scriptSigHexArray.length-1]
+                            const redeemScriptHash160 = bitbox.Crypto.hash160(Buffer.from(redeemScriptHex, 'hex'))
 
-                    try {
-                        if (input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat) !== "false") {
-                            // let bitcore-lib-cash encode the address type
-                            sender.a = Utils.toSlpAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
-                        } else {
-                            // encode as p2sh address type	
-                            const scriptSigHexArray = input.script.toASM().split(' ')		
-                            const redeemScriptHex = scriptSigHexArray[scriptSigHexArray.length-1]		
-                            const redeemScriptHash160 = bitbox.Crypto.hash160(Buffer.from(redeemScriptHex, 'hex'))		
-                            sender.a = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2sh")
+                            // attempt decode of schnorr TODO improve this hack
+                            if (scriptSigHexArray.length === 2 &&
+                                scriptSigHexArray[0].length === 130 &&
+                                (scriptSigHexArray[1].length === 66 || scriptSigHexArray[1].length === 130)
+                            ) {
+                                address = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2pkh")
+                            } else {
+                                // otherwise attempt decode of p2sh
+                                address = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2sh")
+                            }
+                        } catch(err) {
+                            throw Error(`txid: ${gene.hash}, input: ${input.prevTxId.toString('hex')}:${input.outputIndex}, address: ${input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat)}, script ${input._scriptBuffer.toString("hex")}, err: ${err}`)
                         }
-                    } catch (err) {
-                        throw Error(`txid: ${gene.hash}, input: ${input.prevTxId.toString('hex')}:${input.outputIndex}, address: ${input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat)}, script ${input._scriptBuffer.toString("hex")}, err: ${err}`)
+                    if (address && address.length > 0) {
+                        sender.a = address;
                     }
 
                     xput.e = sender;
@@ -93,8 +123,15 @@ export class TNA {
                         s: output._scriptBuffer
                     }
                     let address;
-                    try { address = Utils.toSlpAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));} catch(_) { }
+                    try {
+                      if (options.network === 'regtest'){
+                        address = Utils.toSlpRegtestAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      } else{
+                        address = Utils.toSlpAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      }
+                    } catch(_) { }
                     if (address && address.length > 0) {
+                      // TODO:
                         receiver.a = address;
                     }
                     xput.e = receiver;
@@ -115,10 +152,10 @@ export interface TNATxn {
 }
 
 export interface TNATxnSlpDetails {
-    valid: boolean, 
-    detail: SlpTransactionDetailsTnaDbo|null, 
+    valid: boolean,
+    detail: SlpTransactionDetailsTnaDbo|null,
     invalidReason: string|null,
-    schema_version: number 
+    schema_version: number
 }
 
 export interface Xput {
