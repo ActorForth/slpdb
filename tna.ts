@@ -62,6 +62,7 @@ export class TNA {
                             const redeemScriptHex = scriptSigHexArray[scriptSigHexArray.length-1]
                             const redeemScriptHash160 = bitbox.Crypto.hash160(Buffer.from(redeemScriptHex, 'hex'))
                             if (options.network === 'regtest'){
+                              // TODO protential problem with regtest Hash160
                               sender.a = Utils.toSlpRegtestAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
                             } else {
                               sender.a = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2sh")
