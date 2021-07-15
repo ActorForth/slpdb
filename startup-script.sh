@@ -6,7 +6,8 @@
 
 # Set the MongoDB IP address and port. By default uses the MongoDB Docker
 # container bundled in the docker-compose.yml file.
-export db_url=mongodb://localhost:27017
+# export db_url=mongodb://localhost:27017
+export db_url=mongodb://mongo-slpdb:27017
 echo db_url $db_url
 ./node_modules/migrate-mongo/bin/migrate-mongo.js up
 echo "Finished DB migrations."
