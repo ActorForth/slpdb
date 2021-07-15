@@ -53,6 +53,7 @@
     "p-limit": "2.0.0",
     "p-queue": "3.1.0",
     "slpjs": "^0.27.8",
+    "slpjs-regtest": "^0.27.5",
     "synchronized-promise": "0.2.0",
     "traverse": "^0.6.6",
     "ts-node": "^7.0.1",

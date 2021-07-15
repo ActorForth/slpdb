@@ -1,6 +1,6 @@
 require('dotenv').config()
 import { SlpTransactionDetailsTnaDbo } from './slpgraphmanager';
-import { Utils } from 'slpjs';
+import { Utils } from 'slpjs-regtest';
 import { BITBOX } from 'bitbox-sdk';
 import * as Bitcore from 'bitcore-lib-cash';
 
@@ -9,7 +9,13 @@ let bitcore = require('bitcore-lib-cash');
 
 export class TNA {
     fromTx(gene: Bitcore.Transaction, options?: any): TNATxn {
-        let net = options.network === 'testnet' ? bitcore.Networks.testnet : bitcore.Networks.livenet;
+        const networksAvailable: any = {
+          "mainnet": bitcore.Networks.livenet,
+          "testnet": bitcore.Networks.testnet,
+          "regtest": bitcore.Networks.regtest
+        }
+        let net: any = networksAvailable[options.network] === undefined ? networksAvailable['mainnet'] : networksAvailable[options.network]
+
         let t = gene.toObject()
         let inputs: Xput[] = [];
         let outputs: Xput[] = [];
@@ -45,13 +51,22 @@ export class TNA {
                     try {
                         if (input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat) !== "false") {
                             // let bitcore-lib-cash encode the address type
-                            sender.a = Utils.toSlpAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                            if (options.network === 'regtest'){
+                              sender.a = Utils.toSlpRegtestAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                            } else {
+                              sender.a = Utils.toSlpAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                            }
                         } else {
-                            // encode as p2sh address type	
-                            const scriptSigHexArray = input.script.toASM().split(' ')		
-                            const redeemScriptHex = scriptSigHexArray[scriptSigHexArray.length-1]		
-                            const redeemScriptHash160 = bitbox.Crypto.hash160(Buffer.from(redeemScriptHex, 'hex'))		
-                            sender.a = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2sh")
+                            // encode as p2sh address type
+                            const scriptSigHexArray = input.script.toASM().split(' ')
+                            const redeemScriptHex = scriptSigHexArray[scriptSigHexArray.length-1]
+                            const redeemScriptHash160 = bitbox.Crypto.hash160(Buffer.from(redeemScriptHex, 'hex'))
+                            if (options.network === 'regtest'){
+                              // TODO protential problem with regtest Hash160
+                              sender.a = Utils.toSlpRegtestAddress(input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                            } else {
+                              sender.a = Utils.slpAddressFromHash160(redeemScriptHash160, options.network, "p2sh")
+                            }
                         }
                     } catch (err) {
                         throw Error(`txid: ${gene.hash}, input: ${input.prevTxId.toString('hex')}:${input.outputIndex}, address: ${input.script.toAddress(net).toString(bitcore.Address.CashAddrFormat)}, script ${input._scriptBuffer.toString("hex")}, err: ${err}`)
@@ -93,7 +108,13 @@ export class TNA {
                         s: output._scriptBuffer
                     }
                     let address;
-                    try { address = Utils.toSlpAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));} catch(_) { }
+                    try {
+                      if (options.network === 'regtest'){
+                        address = Utils.toSlpRegtestAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      } else{
+                        address = Utils.toSlpAddress(output.script.toAddress(net).toString(bitcore.Address.CashAddrFormat));
+                      }
+                    } catch(_) { }
                     if (address && address.length > 0) {
                         receiver.a = address;
                     }
@@ -115,10 +136,10 @@ export interface TNATxn {
 }
 
 export interface TNATxnSlpDetails {
-    valid: boolean, 
-    detail: SlpTransactionDetailsTnaDbo|null, 
+    valid: boolean,
+    detail: SlpTransactionDetailsTnaDbo|null,
     invalidReason: string|null,
-    schema_version: number 
+    schema_version: number
 }
 
 export interface Xput {
